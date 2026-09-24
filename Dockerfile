@@ -3,6 +3,8 @@ FROM docker.io/library/golang:1.27.1-alpine3.24@sha256:cd9a32216aee5667f957a62d1
 WORKDIR /src
 COPY . .
 
+RUN apk add make
+
 # Build the process-exporter command inside the container.
 RUN CGO_ENABLED=0 make build
 
