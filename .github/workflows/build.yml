@@ -1,19 +1,36 @@
 on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          filter: 'tree:0'
+
+      - name: Commit metadata
+        id: metadata
+        run: |
+          echo "timestamp=$(git log -1 --pretty=%ct)" >> $GITHUB_OUTPUT
+          echo "version_tag=$(git describe --always)" >> $GITHUB_OUTPUT
+      
       - name: setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.23.8'
+          go-version-file: 'go.mod'
 
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - run: make style
       - run: make vet
       - run: make test
-      - run: make BRANCH=${{ github.head_ref || github.ref_name }} build
+      - run: make build
       - run: make integ
+
+      - name: build docker image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          file: Dockerfile
+          context: .
+          tags: ghcr.io/jcopi/process-exporter:latest, ghcr.io/jcopi/process-exporter:${{ steps.metadata.outputs.version_tag }}
+          push: false
+        env:
+          VERSION_TAG: ${{ steps.metadata.outputs.version_tag }}
+          SOURCE_DATE_EPOCH: ${{ steps.metadata.outputs.timestamp }}
